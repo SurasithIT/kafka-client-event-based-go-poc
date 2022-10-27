@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
@@ -30,10 +28,11 @@ func main() {
 	defer alarmConsumer.Unsubscribe()
 
 	infoConsumer, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers":  bootstrapServer,
-		"group.id":           infoGroupId,
-		"auto.offset.reset":  "earliest",
-		"enable.auto.commit": false,
+		"bootstrap.servers":    bootstrapServer,
+		"group.id":             infoGroupId,
+		"auto.offset.reset":    "earliest",
+		"enable.auto.commit":   false,
+		"enable.partition.eof": true,
 	})
 
 	if err != nil {
@@ -42,23 +41,20 @@ func main() {
 	defer infoConsumer.Close()
 
 	for {
-		alarmMsg, err := alarmConsumer.ReadMessage(-1)
+		if alarmMsg, err := alarmConsumer.ReadMessage(-1); err != nil {
+			fmt.Printf("Consumer error: %v (%v)\n", err, alarmMsg)
+		} else {
+			// Read onlyone  latest message
+			alarmMsg.TopicPartition.Offset = kafka.OffsetTail(1)
 
-		// Read onlyone  latest message
-		alarmMsg.TopicPartition.Offset = kafka.OffsetTail(1)
-
-		if err == nil {
 			fmt.Println("===================")
 			fmt.Printf("Message on %s: %s\n", alarmMsg.TopicPartition, string(alarmMsg.Value))
-			endTime := time.Now()
+			endTime := alarmMsg.Timestamp
 			run := true
 			infoConsumer.Subscribe(infoTopic, nil)
 
 			for run {
 				infoEvent := infoConsumer.Poll(100)
-				if infoEvent == nil {
-					continue
-				}
 				switch infoMsg := infoEvent.(type) {
 				case *kafka.Message:
 					if infoMsg.Timestamp.After(endTime) {
@@ -74,15 +70,18 @@ func main() {
 						run = false
 						break
 					}
+				case kafka.PartitionEOF:
+					fmt.Printf("PartitionEOF: %v\n", infoMsg)
+					run = false
+				case kafka.OffsetsCommitted:
+					fmt.Printf("OffsetsCommitted: %v\n", infoMsg)
 				case kafka.Error:
-					fmt.Fprintf(os.Stderr, "%% Error: %v\n", infoMsg)
+					fmt.Printf("Error: %v\n", infoMsg)
 				default:
 					fmt.Printf("Ignored %v\n", infoMsg)
 				}
 			}
 			infoConsumer.Unsubscribe()
-		} else {
-			fmt.Printf("Consumer error: %v (%v)\n", err, alarmMsg)
 		}
 	}
 }
