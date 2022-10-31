@@ -24,6 +24,10 @@ If consumer received the message from *alarm-topic* will poll all messages from 
     end
 ```
 
+## Kafka client for Golang
+
+In case I will use [confluentinc/confluent-kafka-go](https://github.com/confluentinc/confluent-kafka-go) and the alternative clients are [Shopify/sarama](https://github.com/Shopify/sarama) and [segmentio/kafka-go](https://github.com/segmentio/kafka-go)
+
 ## Tips
 
 ### Kafka Security
