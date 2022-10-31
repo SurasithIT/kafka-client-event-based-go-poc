@@ -6,16 +6,15 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
-const bootstrapServer = "localhost:9093"
+const bootstrapServers = "localhost:9093"
 const groupId = "info-group"
 const topic = "info-topic"
 
 func main() {
 	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers":    bootstrapServer,
-		"group.id":             groupId,
-		"enable.partition.eof": true,
-		"auto.offset.reset":    "earliest",
+		"bootstrap.servers": bootstrapServers,
+		"group.id":          groupId,
+		"auto.offset.reset": "earliest",
 	})
 	if err != nil {
 		panic(err)
